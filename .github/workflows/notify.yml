@@ -1,5 +1,4 @@
-
-name: Notify New Music
+name: Notify when new music added
 
 on:
   push:
@@ -12,23 +11,29 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
+        uses: actions/checkout@v3
 
       - name: Prepare old playlist
         run: |
-          git show HEAD^:playlists.json > old.json || echo "[]" > old.json
+          if [ ! -f old_playlists.json ]; then
+            echo "[]" > old_playlists.json
+          fi
 
       - name: Install Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: 18
 
-      - name: Install packages
+      - name: Install firebase-admin
         run: npm install firebase-admin
 
       - name: Compare + Notify
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node notify.js
+
+      - name: Save updated old_playlists.json
+        run: |
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+          git add old_playlists.json
+          git commit -m "Update old playlists" || echo "No changes"
+          git push || echo "No push"
