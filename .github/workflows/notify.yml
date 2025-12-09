@@ -1,40 +1,41 @@
-const fs = require("fs");
-const admin = require("firebase-admin");
+name: Notify when playlist updated
 
-// Load Firebase service account from Github secret
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+on:
+  push:
+    paths:
+      - "playlists.json"
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
+jobs:
+  notify:
+    runs-on: ubuntu-latest
 
-// Read old + new playlists
-const oldData = JSON.parse(fs.readFileSync("old_playlists.json", "utf8"));
-const newData = JSON.parse(fs.readFileSync("playlists.json", "utf8"));
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-// Convert to string to detect any change
-const oldString = JSON.stringify(oldData);
-const newString = JSON.stringify(newData);
+      - name: Prepare old playlist
+        run: |
+          if [ ! -f old_playlists.json ]; then
+            echo "[]" > old_playlists.json
+          fi
 
-if (oldString === newString) {
-    console.log("No changes detected. No notification sent.");
-    process.exit(0);
-}
+      - name: Install Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-// send notification
-admin.messaging().send({
-    topic: "new_music",
-    notification: {
-        title: "Playlist Updated 🎶",
-        body: "New music added!",
-    }
-})
-.then(() => {
-    console.log("Notification sent!");
-})
-.catch(err => {
-    console.error("FCM ERROR:", err);
-});
+      - name: Install firebase-admin
+        run: npm install firebase-admin
 
-// save new version
-fs.writeFileSync("old_playlists.json", JSON.stringify(newData, null, 2));
+      - name: Run Notification Script
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node notify.js
+
+      - name: Save updated old list
+        run: |
+          git config --local user.email "github-actions@github.com"
+          git config --local user.name "GitHub Actions"
+          git add old_playlists.json
+          git commit -m "Update old playlist" || echo "No changes"
+          git push || echo "No changes to push"
