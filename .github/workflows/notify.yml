@@ -1,1 +1,34 @@
 
+name: Notify New Music
+
+on:
+  push:
+    paths:
+      - "playlists.json"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Prepare old playlist
+        run: |
+          git show HEAD^:playlists.json > old.json || echo "[]" > old.json
+
+      - name: Install Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install packages
+        run: npm install firebase-admin
+
+      - name: Compare + Notify
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node notify.js
