@@ -1,4 +1,4 @@
-name: Notify when playlist updated
+name: Notify on playlist update
 
 on:
   push:
@@ -13,12 +13,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Prepare old playlist
-        run: |
-          if [ ! -f old_playlists.json ]; then
-            echo "[]" > old_playlists.json
-          fi
-
       - name: Install Node
         uses: actions/setup-node@v3
         with:
@@ -27,15 +21,10 @@ jobs:
       - name: Install firebase-admin
         run: npm install firebase-admin
 
-      - name: Run Notification Script
+      - name: Run notify.js
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node notify.js
 
-      - name: Save updated old list
-        run: |
-          git config --local user.email "github-actions@github.com"
-          git config --local user.name "GitHub Actions"
-          git add old_playlists.json
-          git commit -m "Update old playlist" || echo "No changes"
-          git push || echo "No changes to push"
+      - name: Update old playlist file
+        run: cp playlists.json old_playlists.json
