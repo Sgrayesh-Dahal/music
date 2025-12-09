@@ -10,21 +10,37 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      - name: Install Node
-        uses: actions/setup-node@v3
+      # STEP 1 — Restore old_playlists.json from previous run
+      - name: Restore old playlist
+        uses: actions/cache@v3
         with:
-          node-version: 18
+          path: old_playlists.json
+          key: old-playlist-cache
 
-      - name: Install firebase-admin
-        run: npm install firebase-admin
+      # STEP 2 — If old playlist missing, create first copy
+      - name: Init old playlist if missing
+        run: |
+          if [ ! -f old_playlists.json ]; then
+            echo "First run: creating old_playlists.json"
+            cp playlists.json old_playlists.json
+          fi
 
-      - name: Run notify.js
+      # STEP 3 — Setup Node
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      # STEP 4 — Install firebase-admin
+      - run: npm install firebase-admin
+
+      # STEP 5 — Run notification script
+      - name: Compare + Notify
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: node notify.js
 
-      - name: Update old playlist file
+      # STEP 6 — Save updated old_playlists.json for next commit
+      - name: Save updated old playlist
         run: cp playlists.json old_playlists.json
